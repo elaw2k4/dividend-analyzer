@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dividend Projection Tool</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background-color: #f0f0f0; }
+    input { margin: 5px 0; }
+  </style>
+</head>
+<body>
+
+  <h2>Dividend Yield Analyzer</h2>
+  <input type="file" id="fileInput" />
+  <br><br>
+  <label>Investment Amount: $<input type="number" id="investment" value="100000"></label><br>
+  <label>Projection Years: <input type="number" id="years" value="10"></label><br>
+  <label>Top N Stocks to Show: <input type="number" id="topN" value="10"></label><br>
+  <button onclick="analyze()">Analyze</button>
+
+  <div id="output"></div>
+
+  <script>
+    let sheetData = [];
+
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        sheetData = XLSX.utils.sheet_to_json(worksheet);
+      };
+      reader.readAsArrayBuffer(e.target.files[0]);
+    });
+
+    function analyze() {
+      const investment = parseFloat(document.getElementById('investment').value);
+      const years = parseInt(document.getElementById('years').value);
+      const topN = parseInt(document.getElementById('topN').value);
+
+      const results = [];
+
+      for (let row of sheetData) {
+        const name = row['Name'];
+        const ticker = row['Ticker'];
+        const divYield = parseFloat(row['Div Yield']);
+        const cagr = parseFloat(row['3Y Div CAGR']);
+
+        if (isNaN(divYield) || isNaN(cagr)) continue;
+
+        let totalDividends = 0;
+        let futureYield = divYield;
+        const yearlyDividends = [];
+
+        for (let y = 1; y <= years; y++) {
+          const currentYield = divYield * Math.pow(1 + cagr / 100, y);
+          const annualDividend = investment * currentYield / 100;
+          totalDividends += annualDividend;
+          yearlyDividends.push(annualDividend.toFixed(2));
+          if (y === years) futureYield = currentYield;
+        }
+
+        results.push({
+          name,
+          ticker,
+          futureYield: futureYield.toFixed(2),
+          totalDividends: totalDividends.toFixed(2),
+          yearlyDividends,
+        });
+      }
+
+      results.sort((a, b) => b.totalDividends - a.totalDividends);
+      const topStocks = results.slice(0, topN);
+
+      let html = `<table>
+        <tr>
+          <th>Ticker</th>
+          <th>Name</th>
+          <th>Future Yield (%)</th>
+          <th>Total Dividends ($)</th>
+          ${Array.from({ length: years }, (_, i) => `<th>Year ${i + 1}</th>`).join('')}
+        </tr>`;
+
+      for (let stock of topStocks) {
+        html += `<tr>
+          <td>${stock.ticker}</td>
+          <td>${stock.name}</td>
+          <td>${stock.futureYield}</td>
+          <td>${stock.totalDividends}</td>
+          ${stock.yearlyDividends.map(val => `<td>${val}</td>`).join('')}
+        </tr>`;
+      }
+
+      html += `</table>`;
+      document.getElementById('output').innerHTML = html;
+    }
+  </script>
+
+</body>
+</html>
