@@ -170,7 +170,7 @@
               <th class="px-2 py-1 cursor-pointer sortable">Ticker</th>
               <th class="px-2 py-1 cursor-pointer sortable">Name</th>
               <th class="px-2 py-1 sortable">${useEndYield ? 'Start Yield (%)' : 'Future Yield (%)'}</th>
-              ${useEndYield ? '<th class="px-2 py-1">End Yield (%)</th>' : ''}
+              ${useEndYield ? '<th class="px-2 py-1 sortable">End Yield (%)</th>' : ''}
               <th class="px-2 py-1 cursor-pointer sortable">Total Dividends ($)</th>
               ${Array.from({ length: years }, (_, i) => `<th class="px-2 py-1 sortable">Year ${i + 1}</th>`).join('')}
             </tr>
