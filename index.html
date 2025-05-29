@@ -57,8 +57,8 @@
       <button onclick="toggleChart()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 mb-4">
         📉 Toggle Chart
       </button>
-      <div id="chartContainer" style="display: none;">
-        <canvas id="dividendChart" style="height: 400px; width: 100%;"></canvas>
+      <div id="chartContainer" class="mt-6" style="display: block;">
+        <canvas id="dividendChart" style="width: 100%; max-height: 400px;"></canvas>
       </div>
 </div>
 
@@ -141,7 +141,7 @@
       const topCompounded = resultsCompounded.slice(0, topN);
       const topNoReinvest = resultsGrowingNoReinvest.slice(0, topN);
       updateUI(topCompounded, topNoReinvest);
-      renderChart(compounded, noreinvest);
+      renderChart(topCompounded, topNoReinvest);
 
     }
 
