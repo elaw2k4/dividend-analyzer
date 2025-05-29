@@ -11,6 +11,8 @@
     th { background-color: #f0f0f0; }
     input { margin: 5px 0; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 <body>
 
@@ -23,6 +25,7 @@
   <button onclick="analyze()">Analyze</button>
 
   <div id="output"></div>
+  <canvas id="dividendChart" width="1000" height="400"></canvas>
 
   <script>
   let sheetData = [];
@@ -56,15 +59,17 @@
       if (isNaN(divYield) || isNaN(cagr)) continue;
 
       // ✅ Compounded: reinvested dividends
+      let compoundedInvestment = investment;
       let totalCompounded = 0;
       let futureYield = divYield;
       const yearlyCompounded = [];
 
       for (let y = 1; y <= years; y++) {
         const currentYield = divYield * Math.pow(1 + cagr / 100, y - 1);
-        const annualDividend = investment * currentYield / 100;
+        const annualDividend = compoundedInvestment * currentYield / 100;
         totalCompounded += annualDividend;
         yearlyCompounded.push(annualDividend.toFixed(2));
+        compoundedInvestment += annualDividend; // ✅ reinvest dividend
         if (y === years) futureYield = currentYield;
       }
 
@@ -135,6 +140,54 @@
       '<br>' +
       createTable(topNoReinvest, 'Growing Dividends (No Reinvestment)', true);
   }
+
+ // Chart: Top N stocks total dividends comparison
+const labels = topCompounded.map(s => s.ticker);
+const dataCompounded = topCompounded.map(s => parseFloat(s.totalDividends));
+const dataNoReinvest = topNoReinvest.map(s => {
+  const match = topCompounded.find(c => c.ticker === s.ticker);
+  return match ? parseFloat(s.totalDividends) : 0;
+});
+
+const ctx = document.getElementById('dividendChart').getContext('2d');
+if (window.dividendChart) window.dividendChart.destroy(); // reset previous chart
+window.dividendChart = new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      {
+        label: 'Compounded Reinvested',
+        data: dataCompounded,
+        backgroundColor: 'rgba(54, 162, 235, 0.6)'
+      },
+      {
+        label: 'No Reinvestment',
+        data: dataNoReinvest,
+        backgroundColor: 'rgba(255, 159, 64, 0.6)'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      title: {
+        display: true,
+        text: `Total Dividends Over ${years} Years`
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: { display: true, text: 'Total Dividends ($)' }
+      },
+      x: {
+        title: { display: true, text: 'Stock Ticker' }
+      }
+    }
+  }
+});
+ 
 </script>
 
 
