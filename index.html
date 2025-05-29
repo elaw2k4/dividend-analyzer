@@ -4,200 +4,246 @@
   <meta charset="UTF-8">
   <title>Dividend Projection Tool</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <style>
-    body { font-family: Arial; margin: 20px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    th { background-color: #f0f0f0; }
-    input { margin: 5px 0; }
-  </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-colorschemes"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gray-100 text-gray-800 p-6">
 
-  <h2>Dividend Yield Analyzer</h2>
-  <div id="downloadSection" style="margin-top: 20px;">
-  <strong>Need the latest spreadsheet?</strong><br />
-  You can download the latest <b>Dividend Aristocrats</b> Excel file from:<br />
-  <a href="https://www.financecharts.com/screener/dividend-aristocrats/" target="_blank">
-    Dividend Aristocrats List
-  </a>
+  <div class="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-md">
+    <h2 class="text-2xl font-bold mb-4">📈 Dividend Yield Analyzer</h2>
+
+    <div class="mb-4">
+      <p class="text-sm">Download the latest <a class="text-blue-600 underline" href="https://www.financecharts.com/screener/dividend-aristocrats/" target="_blank">Dividend Aristocrats Excel</a> file.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div>
+        <label class="block text-sm">Upload Excel File</label>
+        <input type="file" id="fileInput" class="mt-1 w-full" />
+      </div>
+      <div>
+        <label class="block text-sm">Investment Amount ($)</label>
+        <input type="number" id="investment" value="100000" class="mt-1 w-full border p-1 rounded" />
+      </div>
+      <div>
+        <label class="block text-sm">Projection Years</label>
+        <input type="number" id="years" value="10" class="mt-1 w-full border p-1 rounded" />
+      </div>
+      <div>
+        <label class="block text-sm">Top N Stocks</label>
+        <input type="number" id="topN" value="10" class="mt-1 w-full border p-1 rounded" />
+      </div>
+      <div class="flex items-end">
+        <button onclick="analyze()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full">Analyze</button>
+      </div>
+      <div class="flex items-end">
+        <button onclick="downloadCSV()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full">📥 Download CSV</button>
+      </div>
+    </div>
+
+    <div class="flex justify-between items-center mb-4">
+      <label class="font-medium">📊 Show Model:</label>
+      <select id="modelToggle" onchange="toggleModel()" class="border p-2 rounded">
+        <option value="both">Both</option>
+        <option value="compounded">Compounded</option>
+        <option value="noreinvest">No Reinvestment</option>
+      </select>
+    </div>
+
+    <div id="output"></div>
+
+    <canvas id="dividendChart" height="100"></canvas>
   </div>
-  <input type="file" id="fileInput" />
-  <br><br>
-  
-  <label>Investment Amount: $<input type="number" id="investment" value="100000"></label><br>
-  <label>Projection Years: <input type="number" id="years" value="10"></label><br>
-  <label>Top N Stocks to Show: <input type="number" id="topN" value="10"></label><br>
-  <button onclick="analyze()">Analyze</button>
-
-  <div id="output"></div>
-  <canvas id="dividendChart" width="1000" height="400"></canvas>
 
   <script>
-  let sheetData = [];
+    let sheetData = [];
+    let resultsCompounded = [], resultsGrowingNoReinvest = [], years = 10;
 
-  document.getElementById('fileInput').addEventListener('change', function (e) {
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      sheetData = XLSX.utils.sheet_to_json(worksheet);
-    };
-    reader.readAsArrayBuffer(e.target.files[0]);
-  });
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        sheetData = XLSX.utils.sheet_to_json(worksheet);
+      };
+      reader.readAsArrayBuffer(e.target.files[0]);
+    });
 
-  function analyze() {
-    const investment = parseFloat(document.getElementById('investment').value);
-    const years = parseInt(document.getElementById('years').value);
-    const topN = parseInt(document.getElementById('topN').value);
+    function analyze() {
+      const investment = parseFloat(document.getElementById('investment').value);
+      years = parseInt(document.getElementById('years').value);
+      const topN = parseInt(document.getElementById('topN').value);
 
-    const resultsCompounded = [];
-    const resultsGrowingNoReinvest = [];
+      resultsCompounded = [];
+      resultsGrowingNoReinvest = [];
 
-    for (let row of sheetData) {
-      const name = row['Name'];
-      const ticker = row['Ticker'];
-      const divYield = parseFloat(row['Div Yield']);
-      const cagr = parseFloat(row['3Y Div CAGR']);
+      for (let row of sheetData) {
+        const name = row['Name'];
+        const ticker = row['Ticker'];
+        const divYield = parseFloat(row['Div Yield']);
+        const cagr = parseFloat(row['3Y Div CAGR']);
 
-      if (isNaN(divYield) || isNaN(cagr)) continue;
+        if (isNaN(divYield) || isNaN(cagr)) continue;
 
-      // ✅ Compounded: reinvested dividends
-      let compoundedInvestment = investment;
-      let totalCompounded = 0;
-      let futureYield = divYield;
-      const yearlyCompounded = [];
+        // Compounded
+        let compoundedInvestment = investment, totalCompounded = 0;
+        let futureYield = divYield;
+        const yearlyCompounded = [];
+        for (let y = 1; y <= years; y++) {
+          const currentYield = divYield * Math.pow(1 + cagr / 100, y - 1);
+          const annualDividend = compoundedInvestment * currentYield / 100;
+          totalCompounded += annualDividend;
+          yearlyCompounded.push(annualDividend.toFixed(2));
+          compoundedInvestment += annualDividend;
+          if (y === years) futureYield = currentYield;
+        }
 
-      for (let y = 1; y <= years; y++) {
-        const currentYield = divYield * Math.pow(1 + cagr / 100, y - 1);
-        const annualDividend = compoundedInvestment * currentYield / 100;
-        totalCompounded += annualDividend;
-        yearlyCompounded.push(annualDividend.toFixed(2));
-        compoundedInvestment += annualDividend; // ✅ reinvest dividend
-        if (y === years) futureYield = currentYield;
+        resultsCompounded.push({
+          name, ticker,
+          futureYield: futureYield.toFixed(2),
+          totalDividends: totalCompounded.toFixed(2),
+          yearlyDividends: yearlyCompounded
+        });
+
+        // No reinvestment
+        let totalNoReinvest = 0;
+        const yearlyNoReinvest = [];
+        for (let y = 1; y <= years; y++) {
+          const currentYield = divYield * Math.pow(1 + cagr / 100, y - 1);
+          const annualDividend = investment * currentYield / 100;
+          totalNoReinvest += annualDividend;
+          yearlyNoReinvest.push(annualDividend.toFixed(2));
+        }
+
+        resultsGrowingNoReinvest.push({
+          name, ticker,
+          startYield: divYield.toFixed(2),
+          endYield: (divYield * Math.pow(1 + cagr / 100, years - 1)).toFixed(2),
+          totalDividends: totalNoReinvest.toFixed(2),
+          yearlyDividends: yearlyNoReinvest
+        });
       }
 
-      resultsCompounded.push({
-        name,
-        ticker,
-        futureYield: futureYield.toFixed(2),
-        totalDividends: totalCompounded.toFixed(2),
-        yearlyDividends: yearlyCompounded,
-      });
+      resultsCompounded.sort((a, b) => b.totalDividends - a.totalDividends);
+      resultsGrowingNoReinvest.sort((a, b) => b.totalDividends - a.totalDividends);
 
-      // ✅ Growing yield, no reinvestment (dividends withdrawn)
-      let totalNoReinvest = 0;
-      const yearlyNoReinvest = [];
+      updateUI(resultsCompounded.slice(0, topN), resultsGrowingNoReinvest.slice(0, topN));
+    }
 
-      for (let y = 1; y <= years; y++) {
-        const currentYield = divYield * Math.pow(1 + cagr / 100, y - 1);
-        const annualDividend = investment * currentYield / 100;
-        totalNoReinvest += annualDividend;
-        yearlyNoReinvest.push(annualDividend.toFixed(2));
+    function updateUI(compounded, noreinvest) {
+      const model = document.getElementById("modelToggle").value;
+      let html = '';
+
+      if (model !== 'noreinvest') {
+        html += createTable(compounded, 'Compounded Reinvested Dividends', false);
+      }
+      if (model !== 'compounded') {
+        html += createTable(noreinvest, 'Growing Dividends (No Reinvestment)', true);
       }
 
-      resultsGrowingNoReinvest.push({
-        name,
-        ticker,
-        startYield: divYield.toFixed(2),
-        endYield: (divYield * Math.pow(1 + cagr / 100, years - 1)).toFixed(2),
-        totalDividends: totalNoReinvest.toFixed(2),
-        yearlyDividends: yearlyNoReinvest,
+      document.getElementById('output').innerHTML = html;
+
+      renderChart(compounded, noreinvest);
+    }
+
+    function createTable(data, title, useEndYield) {
+      let header = `
+        <h3 class="text-lg font-semibold mt-6 mb-2">${title}</h3>
+        <div class="overflow-auto">
+        <table class="table-auto w-full border text-sm sortable">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="px-2 py-1 cursor-pointer">Ticker</th>
+              <th class="px-2 py-1 cursor-pointer">Name</th>
+              <th class="px-2 py-1">${useEndYield ? 'Start Yield (%)' : 'Future Yield (%)'}</th>
+              ${useEndYield ? '<th class="px-2 py-1">End Yield (%)</th>' : ''}
+              <th class="px-2 py-1 cursor-pointer">Total Dividends ($)</th>
+              ${Array.from({ length: years }, (_, i) => `<th class="px-2 py-1">Year ${i + 1}</th>`).join('')}
+            </tr>
+          </thead><tbody>`;
+
+      let rows = data.map(stock => `
+        <tr class="hover:bg-gray-50">
+          <td class="px-2 py-1">${stock.ticker}</td>
+          <td class="px-2 py-1">${stock.name}</td>
+          <td class="px-2 py-1">${useEndYield ? stock.startYield : stock.futureYield}</td>
+          ${useEndYield ? `<td class="px-2 py-1">${stock.endYield}</td>` : ''}
+          <td class="px-2 py-1">${stock.totalDividends}</td>
+          ${stock.yearlyDividends.map(val => `<td class="px-2 py-1">${val}</td>`).join('')}
+        </tr>`).join('');
+
+      return header + rows + '</tbody></table></div>';
+    }
+
+    function renderChart(compounded, noreinvest) {
+      const model = document.getElementById("modelToggle").value;
+      const labels = Array.from({ length: years }, (_, i) => `Year ${i + 1}`);
+
+      const datasets = [];
+
+      if (model !== 'noreinvest') {
+        datasets.push(...compounded.map(stock => ({
+          label: `${stock.ticker} (Reinvested)`,
+          data: stock.yearlyDividends.map(Number),
+          borderWidth: 2,
+          fill: false,
+        })));
+      }
+
+      if (model !== 'compounded') {
+        datasets.push(...noreinvest.map(stock => ({
+          label: `${stock.ticker} (No Reinvest)`,
+          data: stock.yearlyDividends.map(Number),
+          borderDash: [5, 5],
+          borderWidth: 2,
+          fill: false,
+        })));
+      }
+
+      const ctx = document.getElementById('dividendChart').getContext('2d');
+      if (window.dividendChart) window.dividendChart.destroy();
+      window.dividendChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: 'Yearly Dividend Comparison'
+            },
+            legend: { display: true }
+          },
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: 'Dividends ($)' } },
+            x: { title: { display: true, text: 'Year' } }
+          }
+        }
       });
     }
 
-    // Sort both results
-    resultsCompounded.sort((a, b) => b.totalDividends - a.totalDividends);
-    resultsGrowingNoReinvest.sort((a, b) => b.totalDividends - a.totalDividends);
-
-    const topCompounded = resultsCompounded.slice(0, topN);
-    const topNoReinvest = resultsGrowingNoReinvest.slice(0, topN);
-
-    const createTable = (data, type, useEndYield) => {
-      let html = `<h3>${type} Projection</h3><table>
-        <tr>
-          <th>Ticker</th>
-          <th>Name</th>
-          <th>${useEndYield ? 'Start Yield (%)' : 'Future Yield (%)'}</th>
-          ${useEndYield ? '<th>End Yield (%)</th>' : ''}
-          <th>Total Dividends ($)</th>
-          ${Array.from({ length: years }, (_, i) => `<th>Year ${i + 1}</th>`).join('')}
-        </tr>`;
-
-      for (let stock of data) {
-        html += `<tr>
-          <td>${stock.ticker}</td>
-          <td>${stock.name}</td>
-          <td>${useEndYield ? stock.startYield : stock.futureYield}</td>
-          ${useEndYield ? `<td>${stock.endYield}</td>` : ''}
-          <td>${stock.totalDividends}</td>
-          ${stock.yearlyDividends.map(val => `<td>${val}</td>`).join('')}
-        </tr>`;
-      }
-
-      html += `</table>`;
-      return html;
-    };
-
-    document.getElementById('output').innerHTML =
-      createTable(topCompounded, 'Compounded Reinvested Dividends', false) +
-      '<br>' +
-      createTable(topNoReinvest, 'Growing Dividends (No Reinvestment)', true);
-  }
-
- // Chart: Top N stocks total dividends comparison
-const labels = topCompounded.map(s => s.ticker);
-const dataCompounded = topCompounded.map(s => parseFloat(s.totalDividends));
-const dataNoReinvest = topNoReinvest.map(s => {
-  const match = topCompounded.find(c => c.ticker === s.ticker);
-  return match ? parseFloat(s.totalDividends) : 0;
-});
-
-const ctx = document.getElementById('dividendChart').getContext('2d');
-if (window.dividendChart) window.dividendChart.destroy(); // reset previous chart
-window.dividendChart = new Chart(ctx, {
-  type: 'bar',
-  data: {
-    labels,
-    datasets: [
-      {
-        label: 'Compounded Reinvested',
-        data: dataCompounded,
-        backgroundColor: 'rgba(54, 162, 235, 0.6)'
-      },
-      {
-        label: 'No Reinvestment',
-        data: dataNoReinvest,
-        backgroundColor: 'rgba(255, 159, 64, 0.6)'
-      }
-    ]
-  },
-  options: {
-    responsive: true,
-    plugins: {
-      title: {
-        display: true,
-        text: `Total Dividends Over ${years} Years`
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        title: { display: true, text: 'Total Dividends ($)' }
-      },
-      x: {
-        title: { display: true, text: 'Stock Ticker' }
-      }
+    function toggleModel() {
+      const topN = parseInt(document.getElementById('topN').value);
+      updateUI(resultsCompounded.slice(0, topN), resultsGrowingNoReinvest.slice(0, topN));
     }
-  }
-});
- 
-</script>
 
+    function downloadCSV() {
+      let csv = 'Ticker,Name,Future Yield,Total Dividends\n';
+      for (let row of resultsCompounded) {
+        csv += `${row.ticker},${row.name},${row.futureYield},${row.totalDividends}\n`;
+      }
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.setAttribute("href", URL.createObjectURL(blob));
+      link.setAttribute("download", "dividend_projection.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
 
 </body>
 </html>
