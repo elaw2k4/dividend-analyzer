@@ -55,13 +55,13 @@
 
       if (isNaN(divYield) || isNaN(cagr)) continue;
 
-      // Compounded: reinvested yields grow total payout
+      // ✅ Compounded: reinvested dividends
       let totalCompounded = 0;
       let futureYield = divYield;
       const yearlyCompounded = [];
 
       for (let y = 1; y <= years; y++) {
-        const currentYield = divYield * Math.pow(1 + cagr / 100, y);
+        const currentYield = divYield * Math.pow(1 + cagr / 100, y - 1);
         const annualDividend = investment * currentYield / 100;
         totalCompounded += annualDividend;
         yearlyCompounded.push(annualDividend.toFixed(2));
@@ -76,12 +76,12 @@
         yearlyDividends: yearlyCompounded,
       });
 
-      // Growing No Reinvest: yield increases, dividends withdrawn each year
+      // ✅ Growing yield, no reinvestment (dividends withdrawn)
       let totalNoReinvest = 0;
       const yearlyNoReinvest = [];
 
       for (let y = 1; y <= years; y++) {
-        const currentYield = divYield * Math.pow(1 + cagr / 100, y);
+        const currentYield = divYield * Math.pow(1 + cagr / 100, y - 1);
         const annualDividend = investment * currentYield / 100;
         totalNoReinvest += annualDividend;
         yearlyNoReinvest.push(annualDividend.toFixed(2));
@@ -91,13 +91,13 @@
         name,
         ticker,
         startYield: divYield.toFixed(2),
-        endYield: (divYield * Math.pow(1 + cagr / 100, years)).toFixed(2),
+        endYield: (divYield * Math.pow(1 + cagr / 100, years - 1)).toFixed(2),
         totalDividends: totalNoReinvest.toFixed(2),
         yearlyDividends: yearlyNoReinvest,
       });
     }
 
-    // Sort both lists by total dividends
+    // Sort both results
     resultsCompounded.sort((a, b) => b.totalDividends - a.totalDividends);
     resultsGrowingNoReinvest.sort((a, b) => b.totalDividends - a.totalDividends);
 
@@ -136,6 +136,7 @@
       createTable(topNoReinvest, 'Growing Dividends (No Reinvestment)', true);
   }
 </script>
+
 
 </body>
 </html>
