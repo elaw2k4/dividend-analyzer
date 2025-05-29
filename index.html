@@ -190,6 +190,10 @@
     }
 
     function renderChart(compounded, noreinvest) {
+      const canvas = document.getElementById('dividendChart');
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
       const model = document.getElementById("modelToggle").value;
       const labels = Array.from({ length: years }, (_, i) => `Year ${i + 1}`);
 
@@ -214,7 +218,6 @@
         })));
       }
 
-      const ctx = document.getElementById('dividendChart').getContext('2d');
       if (window.dividendChart) window.dividendChart.destroy();
       window.dividendChart = new Chart(ctx, {
         type: 'line',
@@ -235,7 +238,6 @@
         }
       });
     }
-
 
     function toggleChart() {
       const container = document.getElementById("chartContainer");
