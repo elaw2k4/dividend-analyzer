@@ -169,8 +169,8 @@
         <table class="table-auto w-full border text-sm sortable min-w-full">
           <thead>
             <tr class="bg-gray-100">
-              <th class="sticky left-0 bg-white z-10 px-2 py-1 cursor-pointer sortable w-28">Ticker</th>
-              <th class="sticky left-28 bg-white z-10 px-2 py-1 cursor-pointer sortable w-40">Name</th>
+              <th class="sticky px-2 py-1 cursor-pointer sortable">Ticker</th>
+              <th class="sticky px-2 py-1 cursor-pointer sortable">Name</th>
               <th class="px-2 py-1 sortable">${useEndYield ? 'Start Yield (%)' : 'Future Yield (%)'}</th>
               ${useEndYield ? '<th class="px-2 py-1 sortable">End Yield (%)</th>' : ''}
               <th class="px-2 py-1 cursor-pointer sortable">Total Dividends ($)</th>
@@ -180,8 +180,8 @@
 
       let rows = data.map(stock => `
         <tr class="hover:bg-gray-50">
-          <td class="sticky left-0 bg-white border-r px-2 py-1 w-28">${stock.ticker}</td>
-          <td class="sticky left-28 bg-white border-r px-2 py-1 w-40">${stock.name}</td>
+          <td class="sticky px-2 py-1">${stock.ticker}</td>
+          <td class="sticky px-2 py-1">${stock.name}</td>
           <td class="px-2 py-1">${useEndYield ? stock.startYield : stock.futureYield}</td>
           ${useEndYield ? `<td class="px-2 py-1">${stock.endYield}</td>` : ''}
           <td class="px-2 py-1">${stock.totalDividends}</td>
